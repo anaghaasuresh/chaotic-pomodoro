@@ -1,7 +1,723 @@
 <!DOCTYPE html>
-<html>
-<head><title>Useless Pomodoro</title></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chaotic Pomodoro - Focus. Maybe.</title>
+
+  <!-- Google Fonts matching the design mockup -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --purple-dark: #2A1747;
+      --purple-primary: #7C4DFF;
+      --purple-gradient: linear-gradient(135deg, #8C52FF 0%, #6320EE 100%);
+      --text-muted: #6B5B95;
+      --glass-bg: rgba(255, 255, 255, 0.45);
+      --glass-border: rgba(255, 255, 255, 0.7);
+      --glass-card: rgba(255, 255, 255, 0.65);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      width: 100vw;
+      overflow-x: hidden;
+      background: url("{{ url_for('static', filename='images/chaoticbg.png') }}") no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--purple-dark);
+      position: relative;
+    }
+
+    /* Red Flashing Vignette Alert Effect */
+    #red-vignette {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+      box-shadow: inset 0 0 120px 80px rgba(255, 0, 55, 0.85);
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+    }
+
+    #red-vignette.flashing {
+      animation: vignettePulse 0.5s infinite alternate;
+    }
+
+    @keyframes vignettePulse {
+      0% { opacity: 0.2; }
+      100% { opacity: 1; }
+    }
+
+    /* Header Section */
+    header {
+      text-align: center;
+      margin-top: 25px;
+      z-index: 10;
+    }
+
+    .brand-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #38125C;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: -2px;
+    }
+
+    .tagline-top {
+      font-family: 'Caveat', cursive;
+      font-size: 1.4rem;
+      color: var(--purple-primary);
+      margin-top: 6px;
+    }
+
+    .main-heading {
+      font-size: 3.2rem;
+      font-weight: 800;
+      color: var(--purple-dark);
+      margin-top: 4px;
+      letter-spacing: -1px;
+    }
+
+    .main-heading span {
+      color: #7000FF;
+    }
+
+    .sub-heading {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* Desk Container Layout */
+    .desk-scene {
+      position: relative;
+      width: 100%;
+      max-width: 1100px;
+      margin-top: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 5;
+    }
+
+    /* 3D Asset Decor placing */
+    .decor-image {
+      position: absolute;
+      user-select: none;
+      filter: drop-shadow(0px 18px 20px rgba(0, 0, 0, 0.12));
+      pointer-events: none;
+    }
+
+    .books-cat {
+      left: -40px;
+      top: 190px;
+      width: 280px;
+    }
+
+    .notepad {
+      right: -20px;
+      top: -20px;
+      width: 210px;
+    }
+
+    .mug {
+      right: -30px;
+      top: 230px;
+      width: 220px;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .mug:hover {
+      transform: scale(1.04) rotate(2deg);
+    }
+
+    /* Hand-Drawn Doodles */
+    .doodle {
+      position: absolute;
+      font-family: 'Caveat', cursive;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #2A1747;
+      line-height: 1.1;
+      user-select: none;
+    }
+
+    .doodle-left-top { top: -10px; left: 80px; }
+    .doodle-left-mid { top: 150px; left: 100px; color: #8A5BFF; }
+    .doodle-right-mid { top: 180px; right: 120px; text-align: center; }
+    .doodle-right-bottom { bottom: -60px; right: 140px; font-size: 1.1rem; color: #666; }
+
+    /* Glassmorphism Flip Timer Box */
+    .timer-display-box {
+      background: rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 3px solid rgba(255, 255, 255, 0.85);
+      border-radius: 40px;
+      padding: 25px 60px;
+      box-shadow: 0 25px 50px rgba(78, 38, 126, 0.12);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: relative;
+    }
+
+    /* Page Turning Flip Clock Cards */
+    .flip-card {
+      background: linear-gradient(180deg, #371861 0%, #1F0A3B 100%);
+      border-radius: 24px;
+      width: 180px;
+      height: 180px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 8rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      position: relative;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.25), inset 0 2px 2px rgba(255,255,255,0.2);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      overflow: hidden;
+    }
+
+    /* Horizontal Flip Page Cut */
+    .flip-card::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 5;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    .flip-card.page-turn {
+      animation: flipPageAnim 0.6s ease-in-out;
+    }
+
+    @keyframes flipPageAnim {
+      0% { transform: rotateX(0deg); }
+      50% { transform: rotateX(-90deg); filter: brightness(0.6); }
+      100% { transform: rotateX(0deg); }
+    }
+
+    .timer-colon {
+      font-size: 5rem;
+      font-weight: 800;
+      color: var(--purple-dark);
+    }
+
+    /* Controls Glass Console */
+    .controls-card {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      border-radius: 28px;
+      padding: 20px 30px;
+      margin-top: 25px;
+      width: 650px;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      box-shadow: 0 15px 35px rgba(60, 20, 100, 0.08);
+    }
+
+    .time-picker-section, .presets-section {
+      flex: 1;
+    }
+
+    .section-label {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: var(--purple-dark);
+      margin-bottom: 12px;
+    }
+
+    .pickers-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .picker-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .picker-item span {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .arrow-btn {
+      background: none;
+      border: none;
+      color: var(--purple-dark);
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .picker-input {
+      width: 50px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: #FFF;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--purple-dark);
+      outline: none;
+    }
+
+    .divider-line {
+      width: 1px;
+      background: rgba(0, 0, 0, 0.1);
+      margin: 0 5px;
+    }
+
+    /* Quick Preset Buttons */
+    .preset-grid {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preset-btn {
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #533B78;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .preset-btn:hover {
+      background: #7C4DFF;
+      color: #FFF;
+    }
+
+    /* Reason Input Box */
+    .reason-row {
+      width: 650px;
+      margin-top: 15px;
+    }
+
+    .reason-input {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(10px);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--purple-dark);
+      outline: none;
+    }
+
+    /* Main Action Buttons Row */
+    .actions-row {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .btn-action {
+      padding: 14px 28px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 1rem;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .btn-start {
+      background: var(--purple-gradient);
+      color: #FFF;
+      padding: 14px 38px;
+      box-shadow: 0 10px 25px rgba(124, 77, 255, 0.35);
+    }
+
+    .btn-start:hover {
+      transform: translateY(-2deg);
+      box-shadow: 0 14px 30px rgba(124, 77, 255, 0.45);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--purple-dark);
+    }
+
+    .btn-secondary:hover {
+      background: #FFF;
+      transform: translateY(-2deg);
+    }
+
+    /* Alert Banner Section */
+    .alert-banner {
+      width: 650px;
+      margin-top: 20px;
+      padding: 16px 22px;
+      background: #FFFFFF;
+      border-radius: 20px;
+      border-left: 6px solid var(--purple-primary);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+      display: none;
+      animation: alertSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes alertSlideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .alert-banner h4 {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--purple-dark);
+    }
+
+    .alert-banner p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+  </style>
+</head>
 <body>
-  <p>Placeholder — your frontend design goes here.</p>
+
+  <!-- Red Flash Vignette -->
+  <div id="red-vignette"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand-title">
+      Chaotic 
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+    </div>
+    <div class="brand-subtitle">POMODORO</div>
+    <div class="tagline-top">A timer that doesn't really behave.</div>
+    <h1 class="main-heading">Focus. <span>Maybe.</span></h1>
+    <p class="sub-heading">Set a timer. Do your best. We'll do the rest <i>(or not)</i>.</p>
+  </header>
+
+  <!-- Main Desk Layout Scene -->
+  <div class="desk-scene">
+
+    <!-- 3D Assets -->
+    <img src="{{ url_for('static', filename='images/booksandcat.png') }}" class="decor-image books-cat" alt="Books with Sleeping Cat">
+    <img src="{{ url_for('static', filename='images/notepad.png') }}" class="decor-image notepad" alt="Sticky Note">
+    <img src="{{ url_for('static', filename='images/mug.png') }}" class="decor-image mug" id="mug-button" alt="Coffee Mug" title="Click me for a phone roast!">
+
+    <!-- Playful Doodles & Paper Airplane -->
+    <div class="doodle doodle-left-top">Discipline<br>is overrated. 🙂</div>
+    <div class="doodle doodle-left-mid">Same<br>tomorrow?<br>Probably.</div>
+    
+    <!-- Paper Airplane Canvas SVG -->
+    <svg style="position: absolute; top: 10px; right: 220px; width: 120px; height: 90px;" viewBox="0 0 100 80">
+      <path d="M 10,70 Q 40,20 80,25" fill="none" stroke="#7C4DFF" stroke-width="2" stroke-dasharray="4,4"/>
+      <g transform="translate(65, 10) rotate(-10)">
+        <polygon points="0,0 25,10 8,15" fill="#EAEAEA" stroke="#2A1747" stroke-width="1.5"/>
+        <polygon points="25,10 0,0 14,22" fill="#FFFFFF" stroke="#2A1747" stroke-width="1.5"/>
+      </g>
+    </svg>
+
+    <div class="doodle doodle-right-mid">Progress<br>is a social<br>construct. 🙂</div>
+    <div class="doodle doodle-right-bottom">Not every session is 20 minutes...<br>That's the point. ♡</div>
+
+    <!-- Glass Flip Timer Box -->
+    <div class="timer-display-box">
+      <div class="flip-card" id="display-minutes">25</div>
+      <div class="timer-colon">:</div>
+      <div class="flip-card" id="display-seconds">00</div>
+    </div>
+
+    <!-- Controls Glass Console -->
+    <div class="controls-card">
+      <div class="time-picker-section">
+        <div class="section-label">Set your time</div>
+        <div class="pickers-row">
+          <div class="picker-item">
+            <span>Hours</span>
+            <button class="arrow-btn" onclick="adjustValue('hours', 1)">▲</button>
+            <input type="text" id="hours" class="picker-input" value="00" readonly>
+            <button class="arrow-btn" onclick="adjustValue('hours', -1)">▼</button>
+          </div>
+          <div class="picker-item">
+            <span>Minutes</span>
+            <button class="arrow-btn" onclick="adjustValue('minutes', 1)">▲</button>
+            <input type="text" id="minutes" class="picker-input" value="25" readonly>
+            <button class="arrow-btn" onclick="adjustValue('minutes', -1)">▼</button>
+          </div>
+          <div class="picker-item">
+            <span>Seconds</span>
+            <button class="arrow-btn" onclick="adjustValue('seconds', 1)">▲</button>
+            <input type="text" id="seconds" class="picker-input" value="00" readonly>
+            <button class="arrow-btn" onclick="adjustValue('seconds', -1)">▼</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider-line"></div>
+
+      <div class="presets-section">
+        <div class="section-label">Or pick a quick one</div>
+        <div class="preset-grid">
+          <button class="preset-btn" onclick="setPreset(5)">5m</button>
+          <button class="preset-btn" onclick="setPreset(10)">10m</button>
+          <button class="preset-btn" onclick="setPreset(20)">20m</button>
+          <button class="preset-btn" onclick="setPreset(30)">30m</button>
+          <button class="preset-btn" onclick="setPreset(60)">60m</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reason Text Input -->
+    <div class="reason-row">
+      <input type="text" id="reason-input" class="reason-input" placeholder="What are you working on? (e.g., study, cooking, gym, work)...">
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="actions-row">
+      <button class="btn-action btn-start" id="start-btn" onclick="startChaosTimer()">▷ Start Chaos</button>
+      <button class="btn-action btn-secondary" onclick="pauseTimer()">|| Pause</button>
+      <button class="btn-action btn-secondary" onclick="resetTimer()">↺ Reset</button>
+    </div>
+
+    <!-- Alert Box -->
+    <div class="alert-banner" id="alert-banner">
+      <h4 id="alert-title">🚨 System Notification</h4>
+      <p id="alert-message">Your timer has opinions. And they're not nice.</p>
+    </div>
+
+  </div>
+
+  <script>
+    let timerInterval = null;
+    let schedule = null;
+    let currentSeconds = 0;
+    let isPaused = false;
+    let audioCtx = null;
+
+    // Web Audio synthesizer for alarms
+    function triggerAlarmAudio() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      } catch (e) {
+        console.log("Audio play error:", e);
+      }
+    }
+
+    function triggerVignetteFlash(seconds = 3) {
+      const vignette = document.getElementById('red-vignette');
+      vignette.classList.add('flashing');
+      let soundCount = 0;
+      const soundInterval = setInterval(() => {
+        triggerAlarmAudio();
+        soundCount++;
+        if (soundCount >= seconds * 2) clearInterval(soundInterval);
+      }, 500);
+
+      setTimeout(() => vignette.classList.remove('flashing'), seconds * 1000);
+    }
+
+    function updateCard(elemId, value) {
+      const card = document.getElementById(elemId);
+      const formatted = String(value).padStart(2, '0');
+      if (card.innerText !== formatted) {
+        card.innerText = formatted;
+        card.classList.add('page-turn');
+        setTimeout(() => card.classList.remove('page-turn'), 600);
+      }
+    }
+
+    function updateTimerDisplay(totalSecs) {
+      const mins = Math.floor(totalSecs / 60);
+      const secs = totalSecs % 60;
+      updateCard('display-minutes', mins);
+      updateCard('display-seconds', secs);
+    }
+
+    function showAlert(title, message, isWarning = false) {
+      const banner = document.getElementById('alert-banner');
+      banner.style.borderLeftColor = isWarning ? '#FF0055' : '#7C4DFF';
+      document.getElementById('alert-title').innerText = title;
+      document.getElementById('alert-message').innerText = message;
+      banner.style.display = 'block';
+    }
+
+    function adjustValue(unit, amount) {
+      const elem = document.getElementById(unit);
+      let val = parseInt(elem.value) + amount;
+      if (val < 0) val = 0;
+      if (unit === 'minutes' || unit === 'seconds') if (val > 59) val = 59;
+      elem.value = String(val).padStart(2, '0');
+    }
+
+    function setPreset(mins) {
+      document.getElementById('hours').value = '00';
+      document.getElementById('minutes').value = String(mins).padStart(2, '0');
+      document.getElementById('seconds').value = '00';
+      updateTimerDisplay(mins * 60);
+    }
+
+    async function startChaosTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+
+      const hrs = parseInt(document.getElementById('hours').value) || 0;
+      const mins = parseInt(document.getElementById('minutes').value) || 0;
+      const secs = parseInt(document.getElementById('seconds').value) || 0;
+      const totalMinutes = hrs * 60 + mins + (secs / 60);
+      const reason = document.getElementById('reason-input').value;
+
+      if (totalMinutes <= 0) {
+        showAlert('⚠️ Hold up!', 'Please set a duration greater than 0.', true);
+        return;
+      }
+
+      const startBtn = document.getElementById('start-btn');
+      startBtn.disabled = true;
+      startBtn.innerText = '⌛ Running...';
+
+      try {
+        // Send POST request to Flask app.py /api/start_timer endpoint[cite: 2]
+        const response = await fetch('/api/start_timer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ duration: totalMinutes, unit: 'minutes', reason: reason })
+        });
+
+        schedule = await response.json();
+        currentSeconds = 0;
+        updateTimerDisplay(schedule.requested_seconds);
+        showAlert('⏳ Chaos Initiated', `Category matched: ${schedule.category.toUpperCase()}`);
+
+        const triggeredAlarms = new Set();
+
+        timerInterval = setInterval(() => {
+          if (isPaused) return;
+
+          currentSeconds++;
+          const remainingSeconds = schedule.requested_seconds - currentSeconds;
+
+          if (remainingSeconds >= 0) {
+            updateTimerDisplay(remainingSeconds);
+          }
+
+          // False alarms check
+          schedule.false_alarms.forEach((alarm, idx) => {
+            if (currentSeconds === alarm.offset_seconds && !triggeredAlarms.has(idx)) {
+              triggeredAlarms.add(idx);
+              triggerVignetteFlash(alarm.reveal_delay_seconds || 3);
+              showAlert('🚨 FALSE ALARM!', alarm.message, true);
+
+              setTimeout(() => {
+                showAlert('😮‍💨 Crisis Averted', alarm.reveal_message);
+              }, (alarm.reveal_delay_seconds || 3) * 1000);
+            }
+          });
+
+          // Real alarm completion check
+          if (currentSeconds >= schedule.real_fire_seconds) {
+            clearInterval(timerInterval);
+            triggerVignetteFlash(5);
+            showAlert('🔔 TIMER COMPLETE!', schedule.real_alarm.message, true);
+            startBtn.disabled = false;
+            startBtn.innerText = '▷ Start Chaos';
+          }
+        }, 1000);
+
+      } catch (err) {
+        console.error(err);
+        showAlert('❌ Error', 'Could not start timer. Verify app.py server is running.');
+        startBtn.disabled = false;
+        startBtn.innerText = '▷ Start Chaos';
+      }
+    }
+
+    function pauseTimer() {
+      isPaused = !isPaused;
+      showAlert('⏸️ Paused', isPaused ? 'Timer paused.' : 'Timer resumed.');
+    }
+
+    function resetTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      isPaused = false;
+      currentSeconds = 0;
+      setPreset(25);
+      document.getElementById('start-btn').disabled = false;
+      document.getElementById('start-btn').innerText = '▷ Start Chaos';
+      document.getElementById('alert-banner').style.display = 'none';
+    }
+
+    // Interactive Coffee Mug Phone Roast API Call
+    document.getElementById('mug-button').addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/phone_roast'); // GET route in app.py[cite: 2]
+        const data = await res.json();
+        showAlert('☕ Mug Roast:', data.comment, true);
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  </script>
 </body>
 </html>
